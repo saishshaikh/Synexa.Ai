@@ -1,0 +1,15 @@
+cd C:\Users\SAISH\OneDrive\Desktop\Synexa.Ai
+
+# .gitignore file banao
+echo "node_modules/
+.env
+serviceAccountKey.json
+*.log
+.DS_Store
+dist/
+build/
+.vscode/
+.idea/
+backend/gateway/node_modules/
+backend/services/auth/node_modules/
+frontend/node_modules/" > .gitignore
