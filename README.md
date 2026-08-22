@@ -31,9 +31,9 @@ The platform enables autonomous AI agents to perform complex tasks like **web se
 
 | Layer | Technologies |
 |-------|--------------|
-| **Frontend** | React.js, Next.js, TypeScript, Tailwind CSS |
-| **Backend** | Node.js, Express.js, NestJS |
-| **Database** | MongoDB, Redis, Vector DB (Pinecone) |
+| **Frontend** | React.js, Javascript, Tailwind CSS |
+| **Backend** | Node.js, Express.js |
+| **Database** | MongoDB, Redis, Vector DB  |
 | **AI/ML** | LangChain, LangGraph, RAG |
 | **DevOps** | Docker, Nginx, AWS |
 | **CI/CD** | GitHub Actions |
