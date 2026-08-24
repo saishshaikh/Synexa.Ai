@@ -1,13 +1,35 @@
 import React from 'react'
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from './utils/firebase'; // ✅ Yahan './utils/firebase' use karein
+import { auth } from './utils/firebase';
+import Api from './utils/axios';
 
 const App = () => {
+  const handleLogin = async (token) => {
+    try {
+      const response = await Api.post("/auth/firebase-login", { token });
+      console.log("✅ Login Success:", response.data);
+
+      // ✅ User ko localStorage mein save karo
+      if (response.data.success) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+      }
+    } catch (error) {
+      console.error("❌ Error in handleLogin:", error);
+    }
+  };
+
   const handleGoogleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-     console.log(result)
+      const user = result.user;
+
+      // ✅ Firestore / Auth se token nikalo
+      const token = await user.getIdToken();
+      console.log("Token:", token);
+
+      await handleLogin(token);
+      console.log("Login Result:", result);
     } catch (error) {
       alert("Google Login Failed");
     }
