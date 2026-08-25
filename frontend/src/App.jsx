@@ -1,26 +1,16 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import Home from './pages/home';
-import { getCurrentUser } from './pages/features/getCurrentUser';
+import { useGetCurrentUser } from './hooks/useGetCurrentUser';
 
 const App = () => {
+    useGetCurrentUser(); // <-- Hook call karo, data khud store ho jayega!
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        await getCurrentUser(); // Backend se user fetch kar rahe hain
-      } catch (error) {
-        console.error("Error fetching user:", error);
-      }
-    };
-    
-    fetchUser(); // Function ko call karo
-  }, []); // <--- Yeh [] bahut zaroori hai, warna yeh baar-baar chalega
-
-  return (
-    <div>
-      <Home />  
-    </div>
-  );
+    return (
+        <div>
+            <Home />
+        </div>
+    );
 };
 
+// ✅ 'export default' LIKHNA ZAROORI HAI!
 export default App;

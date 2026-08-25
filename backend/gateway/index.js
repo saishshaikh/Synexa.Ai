@@ -4,7 +4,7 @@ import proxy from "express-http-proxy";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import protect from "./middleware/auth.middleware.js";
-import GetCurrentuser from "./controllers/user.controller.js"; // <-- Yahan se { } hataye
+import GetCurrentuser from "./controllers/user.controller.js"; // <-- Curly braces { } HATAO!
 
 dotenv.config();
 
@@ -20,11 +20,11 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use(
-  "/auth",
+  "/api/auth",
   proxy(process.env.AUTH_SERVICE || "http://localhost:8001")
 );
 
-app.get("/me", protect, GetCurrentuser);
+app.get("/api/me", protect, GetCurrentuser);
 app.get("/", (req, res) => {
   res.status(200).json({
     message: "Gateway Running",
