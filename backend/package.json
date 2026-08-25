@@ -1,5 +1,16 @@
 {
   "dependencies": {
-    "firebase-admin": "^14.3.0"
-  }
+    "firebase-admin": "^14.3.0",
+    "ioredis": "^6.0.0"
+  },
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
 }
