@@ -14,7 +14,7 @@ app.use(express.json());
 
 app.get("/chat", (req, res) => {
     res.status(200).json({
-        message: "chat Service Running"
+        message: "Agenntt Service Running"
     });
 });
 

@@ -43,6 +43,15 @@ app.use(
   )
 );
 
+
+// AGENT SERVICES 
+
+app.use(
+  "/api/agent",
+  protect,
+  proxyWithHeader(process.env.AGENT_SERVICE || "http://localhost:8003")
+);
+
 // Current User
 app.get("/api/me", protect, GetCurrentuser);
 
