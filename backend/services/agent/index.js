@@ -2,6 +2,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import MongoDb from "./config/db.js";
+import { router } from "./graph/router.js";
 
 
 dotenv.config();
@@ -11,8 +12,9 @@ const port = process.env.PORT || 8001;
 
 
 app.use(express.json());
+app.use("/",router)
 
-app.get("/chat", (req, res) => {
+app.get("/", (req, res) => {
     res.status(200).json({
         message: "Agenntt Service Running"
     });
