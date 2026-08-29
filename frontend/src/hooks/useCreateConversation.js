@@ -22,7 +22,7 @@ const useCreateConversation = () => {
         ...data
       };
 
-      const response = await Api.post('/api/conversations', requestData);
+      const response = await Api.post("http://localhost:8000/api/chat/conversations");
       console.log('✅ Conversation created:', response.data);
       
       if (response.data.success) {

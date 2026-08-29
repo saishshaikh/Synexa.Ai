@@ -47,12 +47,15 @@ const Home = () => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user.user);
 
-  // ✅ Dark mode toggle effect
+  // ✅ Dark mode toggle effect - FIXED
   useEffect(() => {
+    const html = document.documentElement;
     if (isDarkMode) {
-      document.documentElement.classList.add('dark');
+      html.classList.add('dark');
+      html.style.backgroundColor = '#111827';
     } else {
-      document.documentElement.classList.remove('dark');
+      html.classList.remove('dark');
+      html.style.backgroundColor = '#ffffff';
     }
   }, [isDarkMode]);
 
@@ -111,7 +114,11 @@ const Home = () => {
   // ✅ Login hone ke baad Sidebar aur ChatArea render karo!
   if (user) {
     return (
-      <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-sky-50 via-white to-purple-50 dark:bg-gray-900 transition-colors duration-300">
+      <div className={`flex h-screen w-full overflow-hidden transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-gray-900' 
+          : 'bg-gradient-to-br from-sky-50 via-white to-purple-50'
+      }`}>
         <div className="flex-shrink-0">
           <Sidebar />
         </div>
@@ -120,7 +127,7 @@ const Home = () => {
           <ChatArea />
         </div>
         
-        {/* ✅ Dark Mode Toggle Button - Working */}
+        {/* ✅ Dark Mode Toggle Button */}
         <button
           onClick={toggleDarkMode}
           className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 p-2.5 sm:p-3.5 bg-gradient-to-r from-sky-500 to-purple-500 hover:from-sky-600 hover:to-purple-600 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 z-50"
@@ -135,7 +142,7 @@ const Home = () => {
   return (
     <div className={`min-h-screen flex flex-col items-center justify-center px-3 sm:px-4 md:px-6 py-4 sm:py-6 transition-colors duration-300 ${
       isDarkMode 
-        ? 'bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900' 
+        ? 'bg-gray-900' 
         : 'bg-gradient-to-br from-sky-100 via-purple-50 to-sky-50'
     }`}>
       
