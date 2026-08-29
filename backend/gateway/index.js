@@ -3,12 +3,13 @@ import dotenv from "dotenv";
 import proxy from "express-http-proxy";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import morgan from "morgan";
 
 import protect from "./middleware/auth.middleware.js";
 import GetCurrentuser from "./controllers/user.controller.js";
 import { proxyWithHeader } from "./utils/proxyWithHeader.js";
-dotenv.config();
 
+dotenv.config();
 
 const port = process.env.PORT || 8000;
 
@@ -25,6 +26,7 @@ app.use(
 // Middlewares
 app.use(express.json());
 app.use(cookieParser());
+app.use(morgan("dev"));
 
 // Auth Service
 app.use(
@@ -33,23 +35,36 @@ app.use(
 );
 
 // Chat Service
-// protect pehle user ko verify karega
-// proxyWithHeader userId ko x-user-id mein Chat Service ko bhejega
 app.use(
   "/api/chat",
   protect,
   proxyWithHeader(
-    process.env.CHAT_SERVICE || "http://localhost:8002"
+    process.env.CHAT_SERVICE || "http://localhost:8002",
+    {
+      proxyReqPathResolver: (req) => req.url,
+    }
   )
 );
 
+// Conversations
+app.use(
+  "/api/conversations",
+  protect,
+  proxyWithHeader(
+    process.env.CHAT_SERVICE || "http://localhost:8002",
+    {
+      proxyReqPathResolver: (req) => `/conversations${req.url}`,
+    }
+  )
+);
 
-// AGENT SERVICES 
-
+// Agent Services
 app.use(
   "/api/agent",
   protect,
-  proxyWithHeader(process.env.AGENT_SERVICE || "http://localhost:8003")
+  proxyWithHeader(
+    process.env.AGENT_SERVICE || "http://localhost:8003"
+  )
 );
 
 // Current User
