@@ -1,5 +1,5 @@
 import { StateGraph } from "@langchain/langgraph";
-import { agentState } from "./state.js";
+import { AgentState } from "./state.js";
 import { router } from "./router.js";
 import { Chatagent } from "../agents/chat.agent.js";
 import { searchAgent } from "../agents/search.agent.js";
@@ -8,7 +8,7 @@ import { imageGenAgent } from "../agents/imageGen.agent.js";
 import { pptAgent } from "../agents/ppt.agent.js";
 import { pdfAgent } from "../agents/pdf.agent.js";
 
-const workflow = new StateGraph(agentState);
+const workflow = new StateGraph(AgentState);
 
 workflow.addNode("router", router);
 workflow.addNode("chat", Chatagent);
@@ -24,38 +24,30 @@ workflow.addConditionalEdges(
     "router",
     (state) => {
         switch (state.agent) {
-            case "chat":
-                return "chat";
-            case "pdf":
-                return "pdf";
-            case "search":
-                return "search";
-            case "codding":
-                return "codding";
-            case "imageGen":
-                return "imageGen";
-            case "ppt":
-                return "ppt";
-            default:
-                return "chat";
+            case "chat": return "chat";
+            case "search": return "search";
+            case "codding": return "codding";
+            case "imageGen": return "imageGen";
+            case "ppt": return "ppt";
+            case "pdf": return "pdf";
+            default: return "chat";
         }
     },
     {
         chat: "chat",
-        pdf: "pdf",
         search: "search",
         codding: "codding",
         imageGen: "imageGen",
-        ppt: "ppt"
+        ppt: "ppt",
+        pdf: "pdf"
     }
 );
 
-workflow.addEdge("search","chat" )
-;
+workflow.addEdge("search", "chat");
 workflow.addEdge("chat", "__end__");
 workflow.addEdge("codding", "__end__");
 workflow.addEdge("imageGen", "__end__");
 workflow.addEdge("ppt", "__end__");
 workflow.addEdge("pdf", "__end__");
 
-export const app = workflow.compile();
+export default workflow.compile();

@@ -1,4 +1,4 @@
-// redux/conversationSlice.js
+// src/redux/conversationSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import Api from '../utils/axios';
 
@@ -19,7 +19,7 @@ export const fetchConversations = createAsyncThunk(
   'conversations/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await Api.get('/api/conversations');
+      const response = await Api.get('/api/chat/conversations');
       if (response.data.success) {
         return response.data.data || response.data.conversations || [];
       } else {
@@ -36,7 +36,7 @@ export const createConversation = createAsyncThunk(
   'conversations/create',
   async (data, { rejectWithValue }) => {
     try {
-      const response = await Api.post('/api/conversations', data);
+      const response = await Api.post('/api/chat/conversations', data);
       if (response.data.success) {
         return response.data.data || response.data.conversation;
       } else {
@@ -53,7 +53,7 @@ export const fetchConversationById = createAsyncThunk(
   'conversations/fetchById',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await Api.get(`/api/conversations/${id}`);
+      const response = await Api.get(`/api/chat/conversations/${id}`);
       if (response.data.success) {
         return response.data.data || response.data.conversation;
       } else {
@@ -70,7 +70,7 @@ export const updateConversation = createAsyncThunk(
   'conversations/update',
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const response = await Api.put(`/api/conversations/${id}`, data);
+      const response = await Api.put(`/api/chat/conversations/${id}`, data);
       if (response.data.success) {
         return response.data.data || response.data.conversation;
       } else {
@@ -87,7 +87,7 @@ export const deleteConversation = createAsyncThunk(
   'conversations/delete',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await Api.delete(`/api/conversations/${id}`);
+      const response = await Api.delete(`/api/chat/conversations/${id}`);
       if (response.data.success) {
         return id;
       } else {
@@ -104,35 +104,27 @@ const conversationSlice = createSlice({
   name: 'conversations',
   initialState,
   reducers: {
-    // ✅ Set current conversation
     setCurrentConversation: (state, action) => {
       state.currentConversation = action.payload;
     },
-    
-    // ✅ Clear current conversation
     clearCurrentConversation: (state) => {
       state.currentConversation = null;
     },
-    
-    // ✅ Clear error
     clearError: (state) => {
       state.error = null;
     },
-    
-    // ✅ Reset state
     resetConversationState: () => initialState,
-    
-    // ✅ Add message to current conversation
     addMessageToConversation: (state, action) => {
       if (state.currentConversation) {
+        if (!state.currentConversation.messages) {
+          state.currentConversation.messages = [];
+        }
         state.currentConversation.messages.push(action.payload);
       }
     },
-    
-    // ✅ Update conversation in list
     updateConversationInList: (state, action) => {
       const index = state.conversations.findIndex(
-        conv => conv.id === action.payload.id
+        conv => conv._id === action.payload._id || conv.id === action.payload.id
       );
       if (index !== -1) {
         state.conversations[index] = action.payload;
@@ -140,7 +132,6 @@ const conversationSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // ✅ GET ALL CONVERSATIONS
     builder
       .addCase(fetchConversations.pending, (state) => {
         state.loading = true;
@@ -157,7 +148,6 @@ const conversationSlice = createSlice({
         state.error = action.payload || 'Failed to fetch conversations';
       })
 
-      // ✅ CREATE CONVERSATION
       .addCase(createConversation.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -177,7 +167,6 @@ const conversationSlice = createSlice({
         state.error = action.payload || 'Failed to create conversation';
       })
 
-      // ✅ GET SINGLE CONVERSATION
       .addCase(fetchConversationById.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -192,7 +181,6 @@ const conversationSlice = createSlice({
         state.error = action.payload || 'Failed to fetch conversation';
       })
 
-      // ✅ UPDATE CONVERSATION
       .addCase(updateConversation.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -200,20 +188,15 @@ const conversationSlice = createSlice({
       .addCase(updateConversation.fulfilled, (state, action) => {
         state.loading = false;
         state.success = true;
-        
-        // Update in conversations list
         const index = state.conversations.findIndex(
-          conv => conv.id === action.payload.id
+          conv => conv._id === action.payload._id || conv.id === action.payload.id
         );
         if (index !== -1) {
           state.conversations[index] = action.payload;
         }
-        
-        // Update current conversation if same
-        if (state.currentConversation?.id === action.payload.id) {
+        if (state.currentConversation?._id === action.payload._id || state.currentConversation?.id === action.payload.id) {
           state.currentConversation = action.payload;
         }
-        
         state.error = null;
       })
       .addCase(updateConversation.rejected, (state, action) => {
@@ -222,7 +205,6 @@ const conversationSlice = createSlice({
         state.error = action.payload || 'Failed to update conversation';
       })
 
-      // ✅ DELETE CONVERSATION
       .addCase(deleteConversation.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -231,15 +213,12 @@ const conversationSlice = createSlice({
         state.loading = false;
         state.success = true;
         state.conversations = state.conversations.filter(
-          conv => conv.id !== action.payload
+          conv => conv._id !== action.payload && conv.id !== action.payload
         );
         state.totalCount = state.conversations.length;
-        
-        // Clear current conversation if deleted
-        if (state.currentConversation?.id === action.payload) {
+        if (state.currentConversation?._id === action.payload || state.currentConversation?.id === action.payload) {
           state.currentConversation = null;
         }
-        
         state.error = null;
       })
       .addCase(deleteConversation.rejected, (state, action) => {
@@ -268,5 +247,5 @@ export const selectConversationsError = (state) => state.conversations.error;
 export const selectConversationsSuccess = (state) => state.conversations.success;
 export const selectTotalConversations = (state) => state.conversations.totalCount;
 
-// ✅ Export Reducer
+// ✅ EXPORT DEFAULT REDUCER (Sabse Zaroori!)
 export default conversationSlice.reducer;

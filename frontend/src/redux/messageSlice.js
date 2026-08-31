@@ -1,42 +1,187 @@
-// src/redux/messageSlice.js
+
+// frontend/src/redux/messageSlice.js
+
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import Api from '../utils/axios';
 
-// ✅ 1. Async Thunk: Fetch messages by conversation ID
+// ============================================
+// 1. FETCH MESSAGES
+// ============================================
+
 export const fetchMessages = createAsyncThunk(
   'messages/fetchMessages',
+
   async (conversationId, { rejectWithValue }) => {
     try {
-      const response = await Api.get(`/api/conversations/${conversationId}/messages`);
-      if (response.data.success) {
-        return response.data.data || [];
-      } else {
-        return rejectWithValue(response.data.message || 'Failed to fetch messages');
-      }
+      console.log(
+        '📥 Fetching messages:',
+        conversationId
+      );
+
+      const response = await Api.get(
+        `/api/chat/conversations/${conversationId}/messages`
+      );
+
+      console.log(
+        '✅ Messages response:',
+        response.data
+      );
+
+      // Backend response:
+      //
+      // {
+      //   success: true,
+      //   data: {
+      //     conversation: {...},
+      //     messages: [],
+      //     totalMessages: 0
+      //   }
+      // }
+
+      const messages =
+        response.data?.data?.messages || [];
+
+      console.log(
+        '💬 Actual messages:',
+        messages
+      );
+
+      return Array.isArray(messages)
+        ? messages
+        : [];
+
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || 'Network error');
+      console.error(
+        '❌ Fetch messages error:',
+        err.response?.data || err.message
+      );
+
+      return rejectWithValue(
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to fetch messages'
+      );
     }
   }
 );
 
-// ✅ 2. Async Thunk: Send a new message
+// ============================================
+// 2. SEND MESSAGE
+// ============================================
+
 export const sendMessage = createAsyncThunk(
   'messages/sendMessage',
-  async ({ conversationId, content }, { rejectWithValue }) => {
+
+  async (
+    { conversationId, prompt },
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await Api.post(`/api/conversations/${conversationId}/messages`, { content });
-      if (response.data.success) {
-        return response.data.data; // Return the new message object
-      } else {
-        return rejectWithValue(response.data.message || 'Failed to send message');
-      }
+      console.log(
+        '📤 Sending message from Redux'
+      );
+
+      console.log(
+        '🆔 Conversation ID:',
+        conversationId
+      );
+
+      console.log(
+        '💬 Prompt:',
+        prompt
+      );
+
+      const response = await Api.post(
+        '/api/agent/chat',
+        {
+          prompt,
+          conversationId,
+        }
+      );
+
+      console.log(
+        '================================'
+      );
+
+      console.log(
+        '✅ AI RESPONSE RECEIVED'
+      );
+
+      console.log(
+        '📦 Response data:',
+        response.data
+      );
+
+      console.log(
+        '================================'
+      );
+
+      /*
+        Expected backend response:
+
+        {
+          success: true,
+          message: {
+            role: "assistant",
+            content: "Hello..."
+          }
+        }
+      */
+
+      const assistantMessage =
+        response.data?.message ||
+        response.data?.data?.message ||
+        response.data?.data ||
+        response.data;
+
+      console.log(
+        '🤖 Assistant message:',
+        assistantMessage
+      );
+
+      return assistantMessage;
+
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || 'Network error');
+      console.error(
+        '================================'
+      );
+
+      console.error(
+        '❌ SEND MESSAGE ERROR'
+      );
+
+      console.error(
+        'Status:',
+        err.response?.status
+      );
+
+      console.error(
+        'Response:',
+        err.response?.data
+      );
+
+      console.error(
+        'Message:',
+        err.message
+      );
+
+      console.error(
+        '================================'
+      );
+
+      return rejectWithValue(
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to send message'
+      );
     }
   }
 );
 
-// ✅ 3. Initial State
+// ============================================
+// 3. INITIAL STATE
+// ============================================
+
 const initialState = {
   messages: [],
   loading: false,
@@ -44,79 +189,255 @@ const initialState = {
   sending: false,
 };
 
-// ✅ 4. Slice
+// ============================================
+// 4. SLICE
+// ============================================
+
 const messageSlice = createSlice({
   name: 'messages',
+
   initialState,
+
   reducers: {
-    // ✅ Local state manage karne ke liye (e.g., current conversation change hone par)
     setMessages: (state, action) => {
-      state.messages = action.payload;
+      state.messages = Array.isArray(
+        action.payload
+      )
+        ? action.payload
+        : [];
     },
+
     clearMessages: (state) => {
       state.messages = [];
       state.loading = false;
       state.error = null;
       state.sending = false;
     },
-    // ✅ User ne type karke message bheja (optimistic update)
+
     addMessageLocally: (state, action) => {
       state.messages.push(action.payload);
     },
-    // ✅ Edit ya delete ke liye (agar future mein zaroorat pade)
+
     updateMessage: (state, action) => {
-      const index = state.messages.findIndex((msg) => msg.id === action.payload.id);
+      const index = state.messages.findIndex(
+        (msg) =>
+          msg._id === action.payload._id
+      );
+
       if (index !== -1) {
-        state.messages[index] = action.payload;
+        state.messages[index] =
+          action.payload;
       }
     },
+
     deleteMessage: (state, action) => {
-      state.messages = state.messages.filter((msg) => msg.id !== action.payload.id);
+      state.messages =
+        state.messages.filter(
+          (msg) =>
+            msg._id !== action.payload._id
+        );
     },
   },
+
   extraReducers: (builder) => {
     builder
-      // ✅ Fetch Messages
-      .addCase(fetchMessages.fulfilled, (state, action) => {
-        state.messages = action.payload;
-        state.loading = false;
-        state.error = null;
-      })
-      .addCase(fetchMessages.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchMessages.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || 'Failed to fetch messages';
-      })
-      
-      // ✅ Send Message
-      .addCase(sendMessage.fulfilled, (state, action) => {
-        // Naya message server se aaya, use list mein add karo
-        state.messages.push(action.payload);
-        state.sending = false;
-        state.error = null;
-      })
-      .addCase(sendMessage.pending, (state) => {
-        state.sending = true;
-        state.error = null;
-      })
-      .addCase(sendMessage.rejected, (state, action) => {
-        state.sending = false;
-        state.error = action.payload || 'Failed to send message';
-      });
+
+      // ==========================================
+      // FETCH MESSAGES
+      // ==========================================
+
+      .addCase(
+        fetchMessages.pending,
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        }
+      )
+
+      .addCase(
+        fetchMessages.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.error = null;
+
+          state.messages =
+            Array.isArray(action.payload)
+              ? action.payload
+              : [];
+        }
+      )
+
+      .addCase(
+        fetchMessages.rejected,
+        (state, action) => {
+          state.loading = false;
+
+          state.error =
+            action.payload ||
+            'Failed to fetch messages';
+        }
+      )
+
+      // ==========================================
+      // SEND MESSAGE
+      // ==========================================
+
+      .addCase(
+        sendMessage.pending,
+        (state, action) => {
+          state.sending = true;
+          state.error = null;
+
+          // Temporary user message
+          state.messages.push({
+            _id: `temp_${Date.now()}`,
+            role: 'user',
+            content:
+              action.meta.arg.prompt,
+            createdAt:
+              new Date().toISOString(),
+          });
+        }
+      )
+
+      .addCase(
+        sendMessage.fulfilled,
+        (state, action) => {
+          state.sending = false;
+          state.error = null;
+
+          // Remove temporary message
+          state.messages =
+            state.messages.filter(
+              (msg) =>
+                !String(
+                  msg?._id || ''
+                ).startsWith('temp_')
+            );
+
+          const payload =
+            action.payload;
+
+          console.log(
+            '🟢 Redux fulfilled:',
+            payload
+          );
+
+          if (!payload) {
+            return;
+          }
+
+          // If backend returned messages array
+          if (Array.isArray(payload)) {
+            state.messages = payload;
+            return;
+          }
+
+          // If backend returned assistant message
+          if (
+            payload.role &&
+            payload.content
+          ) {
+            // Add user message
+            state.messages.push({
+              _id: `user_${Date.now()}`,
+              role: 'user',
+              content:
+                action.meta.arg.prompt,
+              createdAt:
+                new Date().toISOString(),
+            });
+
+            // Add assistant message
+            state.messages.push({
+              ...payload,
+
+              _id:
+                payload._id ||
+                `assistant_${Date.now()}`,
+
+              createdAt:
+                payload.createdAt ||
+                new Date().toISOString(),
+            });
+
+            return;
+          }
+
+          // Fallback
+          if (
+            typeof payload === 'object'
+          ) {
+            state.messages.push(payload);
+          }
+        }
+      )
+
+      .addCase(
+        sendMessage.rejected,
+        (state, action) => {
+          state.sending = false;
+
+          state.error =
+            action.payload ||
+            'Failed to send message';
+
+          console.error(
+            '🔴 Redux rejected:',
+            action.payload
+          );
+
+          // Remove temp message
+          state.messages =
+            state.messages.filter(
+              (msg) =>
+                !String(
+                  msg?._id || ''
+                ).startsWith('temp_')
+            );
+        }
+      );
   },
 });
 
-// ✅ 5. Export Actions
-export const { 
-  setMessages, 
-  clearMessages, 
-  addMessageLocally, 
-  updateMessage, 
-  deleteMessage 
+// ============================================
+// 5. ACTIONS
+// ============================================
+
+export const {
+  setMessages,
+  clearMessages,
+  addMessageLocally,
+  updateMessage,
+  deleteMessage,
 } = messageSlice.actions;
 
-// ✅ 6. Export Reducer
+// ============================================
+// 6. SELECTORS
+// ============================================
+
+export const selectAllMessages = (
+  state
+) =>
+  state.messages?.messages || [];
+
+export const selectMessagesLoading = (
+  state
+) =>
+  state.messages?.loading || false;
+
+export const selectMessageSending = (
+  state
+) =>
+  state.messages?.sending || false;
+
+export const selectMessagesError = (
+  state
+) =>
+  state.messages?.error || null;
+
+// ============================================
+// 7. REDUCER
+// ============================================
+
 export default messageSlice.reducer;

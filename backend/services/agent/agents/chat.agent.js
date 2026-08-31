@@ -1,26 +1,26 @@
-```js
-import { getModel } from "../config/llmModels";
+import { getModel } from "../config/llmModels.js";
 
 export const Chatagent = async (state) => {
-  const llm = getModel("chat");
+    console.log("🤖 CHAT AGENT STARTED");
+    console.log("💬 CHAT PROMPT:", state.prompt);
 
-  const Systemprompt =
-    "You are Synexa.AI, an intelligent and helpful AI assistant developed by Saish.";
+    const llm = getModel("chat");
 
-  const response = await llm.invoke([
-    {
-      role: "system",
-      content: Systemprompt,
-    },
-    {
-      role: "human",
-      content: state.prompt,
-    },
-  ]);
+    const response = await llm.invoke([
+        {
+            role: "system",
+            content: "You are Synexa.AI, a helpful assistant.",
+        },
+        {
+            role: "human",
+            content: state.prompt,
+        },
+    ]);
 
-  return {
-    ...state,
-    aiResponse: response.content,
-  };
+    console.log("🤖 ACTUAL AI RESPONSE:", response.content);
+
+    return {
+        ...state,
+        aiResponse: response.content,
+    };
 };
-```

@@ -1,41 +1,37 @@
+// components/chatArea.jsx
 import React, { useEffect } from "react";
 import ChatInput from "./ChatInput";
 import MessageList from "./MessageList";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { Menu } from "lucide-react";
-import useGetConversationById from "../hooks/useGetConversationById";
+import { fetchMessages, selectAllMessages, selectMessagesLoading, selectMessagesError } from "../redux/messageSlice";
+import { selectCurrentConversation } from "../redux/conversationSlice";
 
 const ChatArea = ({ onMenuClick }) => {
-  const currentConversation = useSelector(
-    (state) => state?.conversation?.currentConversation
-  );
+  const dispatch = useDispatch();
 
-  const {
-    conversation,
-    loading,
-    error,
-  } = useGetConversationById(
-    currentConversation?._id
-  );
+  const currentConversation = useSelector(selectCurrentConversation);
+  const messages = useSelector(selectAllMessages);
+  const loading = useSelector(selectMessagesLoading);
+  const error = useSelector(selectMessagesError);
+
+  const activeId = currentConversation?._id || currentConversation?.id;
 
   useEffect(() => {
-    console.log(
-      "🆔 Current Conversation:",
-      currentConversation
-    );
+    if (activeId) {
+      dispatch(fetchMessages(activeId));
+    }
+  }, [dispatch, activeId]);
 
-    console.log(
-      "🆔 Current Conversation ID:",
-      currentConversation?._id
-    );
+  useEffect(() => {
+    console.log("🆔 Current Conversation:", currentConversation);
+    console.log("🆔 Current Conversation ID:", currentConversation?._id);
   }, [currentConversation]);
 
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-[#111827] transition-colors duration-300">
-
       {/* Top Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111827]">
-
         <div className="flex items-center gap-2">
           <button
             onClick={onMenuClick}
@@ -45,9 +41,7 @@ const ChatArea = ({ onMenuClick }) => {
           </button>
 
           <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-            {conversation?.title ||
-              currentConversation?.title ||
-              "New Chat"}
+            {currentConversation?.title || "New Chat"}
           </h2>
         </div>
 
@@ -58,10 +52,9 @@ const ChatArea = ({ onMenuClick }) => {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto w-full max-w-4xl mx-auto p-4">
-
-        {loading && (
+        {loading && messages.length === 0 && (
           <div className="text-center py-4 text-gray-500">
-            Loading conversation...
+            Loading messages...
           </div>
         )}
 
@@ -71,14 +64,13 @@ const ChatArea = ({ onMenuClick }) => {
           </div>
         )}
 
-        <MessageList />
+        <MessageList messages={messages} />
       </div>
 
       {/* Input */}
       <div className="w-full max-w-4xl mx-auto px-4 pb-4 pt-2 bg-white dark:bg-[#111827]">
         <ChatInput />
       </div>
-
     </div>
   );
 };

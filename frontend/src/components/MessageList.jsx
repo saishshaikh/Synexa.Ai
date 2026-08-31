@@ -1,3 +1,4 @@
+// components/MessageList.jsx
 import React, { useEffect } from "react";
 import { Bot, User } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
@@ -6,35 +7,37 @@ import {
   fetchMessages,
   clearMessages,
 } from "../redux/messageSlice";
+import { selectCurrentConversation } from "../redux/conversationSlice";
 
-const MessageList = () => {
+const MessageList = ({ messages: propMessages }) => {
   const dispatch = useDispatch();
 
-  const currentConversation = useSelector(
-    (state) =>
-      state?.conversation?.currentConversation
-  );
+  // ✅ Redux Selectors (Plural use karo!)
+  const currentConversation = useSelector(selectCurrentConversation);
 
+  // ✅ Agar prop aa raha hai toh prop use karo, warna Redux se lo
   const {
-    messages,
+    messages: reduxMessages,
     loading,
     error,
   } = useSelector((state) => state.messages);
 
+  const messages = propMessages || reduxMessages || [];
+
   useEffect(() => {
-    if (currentConversation?.id) {
+    if (currentConversation?.id || currentConversation?._id) {
       console.log(
         "💬 Loading messages for:",
-        currentConversation.id
+        currentConversation.id || currentConversation._id
       );
 
       dispatch(
-        fetchMessages(currentConversation.id)
+        fetchMessages(currentConversation.id || currentConversation._id)
       );
     } else {
       dispatch(clearMessages());
     }
-  }, [currentConversation?.id, dispatch]);
+  }, [currentConversation?.id, currentConversation?._id, dispatch]);
 
   return (
     <div className="flex flex-col h-full">
@@ -75,7 +78,7 @@ const MessageList = () => {
           <div className="w-full space-y-4">
             {messages.map((msg, index) => (
               <div
-                key={msg.id || index}
+                key={msg.id || msg._id || index}
                 className={`flex gap-3 ${
                   msg.role === "user"
                     ? "justify-end"
@@ -95,7 +98,7 @@ const MessageList = () => {
                       : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
                   }`}
                 >
-                  {msg.content}
+                  {msg.content || msg.text || msg.message}
                 </div>
 
                 {msg.role === "user" && (
