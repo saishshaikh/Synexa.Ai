@@ -1,10 +1,12 @@
-
-// frontend/src/hooks/useMessageSend.js
+// src/hooks/useMessageSend.js
 
 import { useState, useCallback } from "react";
 import Api from "../utils/axios";
+
 import { useDispatch, useSelector } from "react-redux";
+
 import { setCurrentConversation } from "../redux/conversationSlice";
+import { addMessageLocally } from "../redux/messageSlice";
 
 const useMessageSend = () => {
   const dispatch = useDispatch();
@@ -39,8 +41,6 @@ const useMessageSend = () => {
         if (!conversationId) {
           setIsCreating(true);
 
-          console.log("🆕 Creating conversation...");
-
           const response = await Api.post(
             "/api/chat/conversations",
             {
@@ -48,11 +48,6 @@ const useMessageSend = () => {
                 cleanPrompt.slice(0, 30) +
                 (cleanPrompt.length > 30 ? "..." : ""),
             }
-          );
-
-          console.log(
-            "✅ Conversation created:",
-            response.data
           );
 
           const newConversation =
@@ -78,14 +73,21 @@ const useMessageSend = () => {
         }
 
         // ==========================================
-        // 2. SEND MESSAGE TO AGENT
+        // 2. ADD USER MESSAGE LOCALLY
+        // ==========================================
+
+        dispatch(
+          addMessageLocally({
+            role: "user",
+            content: cleanPrompt,
+          })
+        );
+
+        // ==========================================
+        // 3. SEND MESSAGE TO AGENT
         // ==========================================
 
         setSending(true);
-
-        console.log("📤 Sending message...");
-        console.log("🆔 Conversation ID:", conversationId);
-        console.log("💬 Prompt:", cleanPrompt);
 
         const response = await Api.post(
           "/api/agent/chat",
@@ -96,11 +98,70 @@ const useMessageSend = () => {
         );
 
         console.log(
-          "✅ AI RESPONSE FROM AGENT:",
+          "🤖 FULL AGENT RESPONSE:",
           response.data
         );
 
-        return response.data;
+        // ==========================================
+        // 4. EXTRACT ACTUAL AI TEXT
+        // ==========================================
+
+        const body = response.data;
+
+        let aiContent = "";
+
+        // Backend response:
+        // {
+        //   success: true,
+        //   data: {
+        //     prompt: "...",
+        //     aiResponse: "...",
+        //     agent: "chat"
+        //   }
+        // }
+
+        if (typeof body === "string") {
+          aiContent = body;
+        } else if (body?.data?.aiResponse) {
+          aiContent = body.data.aiResponse;
+        } else if (body?.aiResponse) {
+          aiContent = body.aiResponse;
+        } else if (body?.data?.response) {
+          aiContent = body.data.response;
+        } else if (body?.response) {
+          aiContent = body.response;
+        } else if (body?.message) {
+          aiContent = body.message;
+        }
+
+        console.log(
+          "🤖 ACTUAL AI CONTENT:",
+          aiContent
+        );
+
+        if (!aiContent) {
+          aiContent = "Sorry, I couldn't generate a response.";
+        }
+
+        // ==========================================
+        // 5. ADD AI RESPONSE LOCALLY
+        // ==========================================
+
+        dispatch(
+          addMessageLocally({
+            role: "assistant",
+            content: aiContent,
+          })
+        );
+
+        return {
+          success: true,
+          data: {
+            conversationId,
+            prompt: cleanPrompt,
+            response: aiContent,
+          },
+        };
 
       } catch (err) {
         console.error(
@@ -139,3 +200,4 @@ const useMessageSend = () => {
 };
 
 export default useMessageSend;
+

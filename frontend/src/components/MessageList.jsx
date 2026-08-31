@@ -8,14 +8,14 @@ import {
   clearMessages,
 } from "../redux/messageSlice";
 import { selectCurrentConversation } from "../redux/conversationSlice";
+// ✅ Import karo!
+import MessageBubbles from "./MessageBubbles";
 
 const MessageList = ({ messages: propMessages }) => {
   const dispatch = useDispatch();
 
-  // ✅ Redux Selectors (Plural use karo!)
   const currentConversation = useSelector(selectCurrentConversation);
 
-  // ✅ Agar prop aa raha hai toh prop use karo, warna Redux se lo
   const {
     messages: reduxMessages,
     loading,
@@ -26,11 +26,6 @@ const MessageList = ({ messages: propMessages }) => {
 
   useEffect(() => {
     if (currentConversation?.id || currentConversation?._id) {
-      console.log(
-        "💬 Loading messages for:",
-        currentConversation.id || currentConversation._id
-      );
-
       dispatch(
         fetchMessages(currentConversation.id || currentConversation._id)
       );
@@ -53,6 +48,7 @@ const MessageList = ({ messages: propMessages }) => {
         </p>
       )}
 
+      {/* ✅ Empty State (Bot icon ke saath) */}
       {!loading &&
         !error &&
         messages.length === 0 && (
@@ -72,41 +68,13 @@ const MessageList = ({ messages: propMessages }) => {
           </div>
         )}
 
+      {/* ✅ Messages List using MessageBubbles */}
       {!loading &&
         !error &&
         messages.length > 0 && (
-          <div className="w-full space-y-4">
+          <div className="w-full">
             {messages.map((msg, index) => (
-              <div
-                key={msg.id || msg._id || index}
-                className={`flex gap-3 ${
-                  msg.role === "user"
-                    ? "justify-end"
-                    : "justify-start"
-                }`}
-              >
-                {msg.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-sky-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0">
-                    <Bot className="w-4 h-4" />
-                  </div>
-                )}
-
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
-                    msg.role === "user"
-                      ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
-                  }`}
-                >
-                  {msg.content || msg.text || msg.message}
-                </div>
-
-                {msg.role === "user" && (
-                  <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-gray-600 dark:text-white" />
-                  </div>
-                )}
-              </div>
+              <MessageBubbles key={msg.id || msg._id || index} message={msg} />
             ))}
           </div>
         )}
