@@ -1,114 +1,586 @@
 // src/redux/messageSlice.js
 
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import Api from '../utils/axios';
+import {
+  createSlice,
+  createAsyncThunk,
+} from "@reduxjs/toolkit";
 
-// 1. FETCH MESSAGES
+import Api from "../utils/axios";
+
+// ======================================================
+// FETCH MESSAGES
+// ======================================================
+
 export const fetchMessages = createAsyncThunk(
-  'messages/fetchMessages',
+  "messages/fetchMessages",
+
   async (conversationId, { rejectWithValue }) => {
     try {
-      const response = await Api.get(`/api/chat/conversations/${conversationId}/messages`);
-      const messages = response.data?.data?.messages || [];
-      return Array.isArray(messages) ? messages : [];
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to fetch messages');
-    }
-  }
-);
-
-// 2. SEND MESSAGE (CRITICAL FIX YAHAN HAI!)
-export const sendMessage = createAsyncThunk(
-  'messages/sendMessage',
-  async ({ conversationId, prompt }, { rejectWithValue }) => {
-    try {
-      const response = await Api.post('/api/agent/chat', { prompt, conversationId });
-
-      // Backend abhi direct string return kar raha hai (res.status(200).json(response))
-      // Agar response string hai, toh use object mein convert karo!
-      let assistantContent = response.data;
-      
-      // Agar backend kabhi object return kare (jaise { data: "..." }), toh wo bhi handle karo
-      if (typeof assistantContent === 'object' && assistantContent !== null) {
-        assistantContent = assistantContent.data || assistantContent.message || assistantContent.aiResponse || JSON.stringify(assistantContent);
+      if (!conversationId) {
+        return rejectWithValue(
+          "Conversation ID is required"
+        );
       }
 
-      const assistantMessage = { role: 'assistant', content: assistantContent };
-      console.log('🤖 Assistant message:', assistantMessage);
-      
-      return assistantMessage;
+      console.log(
+        "🔥 API FETCH MESSAGES:",
+        conversationId
+      );
+
+      const response = await Api.get(
+        `/api/chat/conversations/${conversationId}/messages`
+      );
+
+      console.log(
+        "📦 MESSAGES API RESPONSE:",
+        response.data
+      );
+
+      const body = response.data;
+
+      if (!body?.success) {
+        return rejectWithValue(
+          body?.message ||
+            "Failed to fetch messages"
+        );
+      }
+
+      let messages = [];
+
+      // ==================================================
+      // { success: true, data: { conversation, messages } }
+      // ==================================================
+
+      if (
+        Array.isArray(
+          body?.data?.messages
+        )
+      ) {
+        messages =
+          body.data.messages;
+      }
+
+      // ==================================================
+      // { success: true, messages: [] }
+      // ==================================================
+
+      else if (
+        Array.isArray(body?.messages)
+      ) {
+        messages =
+          body.messages;
+      }
+
+      // ==================================================
+      // { success: true, data: [] }
+      // ==================================================
+
+      else if (
+        Array.isArray(body?.data)
+      ) {
+        messages =
+          body.data;
+      }
+
+      console.log(
+        "✅ EXTRACTED MESSAGES:",
+        messages
+      );
+
+      return {
+        conversationId,
+        messages,
+      };
+
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to send message');
+      console.error(
+        "❌ FETCH MESSAGES ERROR:",
+        err.response?.data ||
+          err.message
+      );
+
+      return rejectWithValue(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to fetch messages"
+      );
     }
+  },
+
+  // ====================================================
+  // PREVENT DUPLICATE FETCH
+  // ====================================================
+
+  {
+    condition: (
+      conversationId,
+      { getState }
+    ) => {
+
+      if (!conversationId) {
+        return false;
+      }
+
+      const state =
+        getState().messages;
+
+      // Already fetching this conversation
+      if (
+        state.loading &&
+        state.currentConversationId ===
+          conversationId
+      ) {
+        console.log(
+          "⏭️ BLOCKED DUPLICATE REQUEST:",
+          conversationId
+        );
+
+        return false;
+      }
+
+      // Already loaded this conversation
+      if (
+        state.currentConversationId ===
+          conversationId &&
+        state.loaded === true
+      ) {
+        console.log(
+          "⏭️ ALREADY LOADED:",
+          conversationId
+        );
+
+        return false;
+      }
+
+      return true;
+    },
   }
 );
 
-// 3. INITIAL STATE
+// ======================================================
+// INITIAL STATE
+// ======================================================
+
 const initialState = {
   messages: [],
+
   loading: false,
+
   error: null,
+
   sending: false,
+
+  currentConversationId: null,
+
+  loaded: false,
 };
 
-// 4. SLICE
+// ======================================================
+// SLICE
+// ======================================================
+
 const messageSlice = createSlice({
-  name: 'messages',
+
+  name: "messages",
+
   initialState,
+
   reducers: {
-    setMessages: (state, action) => {
-      state.messages = Array.isArray(action.payload) ? action.payload : [];
+
+    // ==================================================
+    // SET MESSAGES
+    // ==================================================
+
+    setMessages: (
+      state,
+      action
+    ) => {
+
+      const incomingMessages =
+        Array.isArray(action.payload)
+          ? action.payload
+          : [];
+
+      // Remove duplicate messages
+      const uniqueMessages = [];
+      const seenIds = new Set();
+
+      incomingMessages.forEach(
+        (message, index) => {
+
+          const id =
+            message?._id ||
+            message?.id ||
+            `message-${index}`;
+
+          if (!seenIds.has(id)) {
+            seenIds.add(id);
+            uniqueMessages.push(
+              message
+            );
+          }
+        }
+      );
+
+      state.messages =
+        uniqueMessages;
+
+      state.loaded = true;
     },
+
+    // ==================================================
+    // CLEAR MESSAGES
+    // ==================================================
+
     clearMessages: (state) => {
+
       state.messages = [];
+
       state.loading = false;
+
       state.error = null;
+
       state.sending = false;
+
+      state.currentConversationId =
+        null;
+
+      state.loaded = false;
     },
-    addMessageLocally: (state, action) => {
-      state.messages.push(action.payload);
+
+    // ==================================================
+    // ADD MESSAGE LOCALLY
+    // ==================================================
+
+    addMessageLocally: (
+      state,
+      action
+    ) => {
+
+      const newMessage =
+        action.payload;
+
+      if (!newMessage) {
+        return;
+      }
+
+      const newMessageId =
+        newMessage?._id ||
+        newMessage?.id;
+
+      // --------------------------------------------------
+      // Prevent duplicate ID
+      // --------------------------------------------------
+
+      if (newMessageId) {
+
+        const alreadyExists =
+          state.messages.some(
+            (message) =>
+              message?._id ===
+                newMessageId ||
+              message?.id ===
+                newMessageId
+          );
+
+        if (alreadyExists) {
+          console.log(
+            "⏭️ DUPLICATE MESSAGE BLOCKED:",
+            newMessageId
+          );
+
+          return;
+        }
+      }
+
+      // --------------------------------------------------
+      // Extra protection for temporary messages
+      // --------------------------------------------------
+
+      const duplicateContent =
+        state.messages.some(
+          (message) =>
+            message?.role ===
+              newMessage?.role &&
+            message?.content ===
+              newMessage?.content &&
+            message?.createdAt ===
+              newMessage?.createdAt
+        );
+
+      if (duplicateContent) {
+        console.log(
+          "⏭️ DUPLICATE CONTENT BLOCKED"
+        );
+
+        return;
+      }
+
+      state.messages.push(
+        newMessage
+      );
     },
-    updateMessage: (state, action) => {
-      const index = state.messages.findIndex((msg) => msg._id === action.payload._id);
-      if (index !== -1) state.messages[index] = action.payload;
+
+    // ==================================================
+    // UPDATE MESSAGE
+    // ==================================================
+
+    updateMessage: (
+      state,
+      action
+    ) => {
+
+      const updatedMessage =
+        action.payload;
+
+      const messageId =
+        updatedMessage?._id ||
+        updatedMessage?.id;
+
+      const index =
+        state.messages.findIndex(
+          (message) =>
+            message?._id ===
+              messageId ||
+            message?.id ===
+              messageId
+        );
+
+      if (index !== -1) {
+        state.messages[index] =
+          updatedMessage;
+      }
     },
-    deleteMessage: (state, action) => {
-      state.messages = state.messages.filter((msg) => msg._id !== action.payload._id);
+
+    // ==================================================
+    // DELETE MESSAGE
+    // ==================================================
+
+    deleteMessage: (
+      state,
+      action
+    ) => {
+
+      const messageId =
+        action.payload?._id ||
+        action.payload?.id ||
+        action.payload;
+
+      state.messages =
+        state.messages.filter(
+          (message) =>
+            message?._id !==
+              messageId &&
+            message?.id !==
+              messageId
+        );
     },
   },
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchMessages.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(fetchMessages.fulfilled, (state, action) => { state.loading = false; state.messages = action.payload; state.error = null; })
-      .addCase(fetchMessages.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
 
-      .addCase(sendMessage.pending, (state, action) => {
-        state.sending = true;
-        state.error = null;
-        state.messages.push({ _id: `temp_${Date.now()}`, role: 'user', content: action.meta.arg.prompt, createdAt: new Date().toISOString() });
-      })
-      .addCase(sendMessage.fulfilled, (state, action) => {
-        state.sending = false;
-        state.error = null;
-        state.messages = state.messages.filter((msg) => !String(msg?._id || '').startsWith('temp_'));
-        
-        // User ka message add karo (kyunki backend sirf assistant message return karta hai)
-        state.messages.push({ _id: `user_${Date.now()}`, role: 'user', content: action.meta.arg.prompt, createdAt: new Date().toISOString() });
-        // Assistant ka message add karo
-        state.messages.push({ ...action.payload, _id: action.payload._id || `assistant_${Date.now()}`, createdAt: new Date().toISOString() });
-      })
-      .addCase(sendMessage.rejected, (state, action) => {
-        state.sending = false;
-        state.error = action.payload || 'Failed to send message';
-        state.messages = state.messages.filter((msg) => !String(msg?._id || '').startsWith('temp_'));
-      });
+  // ====================================================
+  // ASYNC ACTIONS
+  // ====================================================
+
+  extraReducers: (builder) => {
+
+    builder
+
+      // ================================================
+      // FETCH PENDING
+      // ================================================
+
+      .addCase(
+        fetchMessages.pending,
+        (
+          state,
+          action
+        ) => {
+
+          state.loading = true;
+
+          state.error = null;
+
+          state.loaded = false;
+
+          state.currentConversationId =
+            action.meta.arg;
+
+          // IMPORTANT:
+          // Remove previous conversation messages
+          state.messages = [];
+
+          console.log(
+            "⏳ FETCH PENDING:",
+            action.meta.arg
+          );
+        }
+      )
+
+      // ================================================
+      // FETCH SUCCESS
+      // ================================================
+
+      .addCase(
+        fetchMessages.fulfilled,
+        (
+          state,
+          action
+        ) => {
+
+          const {
+            conversationId,
+            messages,
+          } = action.payload;
+
+          // ------------------------------------------------
+          // IMPORTANT:
+          // If user already switched to another chat,
+          // ignore old API response.
+          // ------------------------------------------------
+
+          if (
+            state.currentConversationId !==
+            conversationId
+          ) {
+
+            console.log(
+              "⏭️ IGNORING OLD FETCH RESPONSE:",
+              conversationId
+            );
+
+            return;
+          }
+
+          // ------------------------------------------------
+          // Remove duplicate messages from API
+          // ------------------------------------------------
+
+          const uniqueMessages = [];
+          const seenIds = new Set();
+
+          (
+            Array.isArray(messages)
+              ? messages
+              : []
+          ).forEach(
+            (message, index) => {
+
+              const id =
+                message?._id ||
+                message?.id ||
+                `message-${index}`;
+
+              if (!seenIds.has(id)) {
+
+                seenIds.add(id);
+
+                uniqueMessages.push(
+                  message
+                );
+              }
+            }
+          );
+
+          state.loading = false;
+
+          state.error = null;
+
+          state.currentConversationId =
+            conversationId;
+
+          state.messages =
+            uniqueMessages;
+
+          state.loaded = true;
+
+          console.log(
+            "✅ FETCH SUCCESS:",
+            conversationId,
+            uniqueMessages
+          );
+        }
+      )
+
+      // ================================================
+      // FETCH ERROR
+      // ================================================
+
+      .addCase(
+        fetchMessages.rejected,
+        (
+          state,
+          action
+        ) => {
+
+          state.loading = false;
+
+          state.messages = [];
+
+          state.loaded = false;
+
+          state.error =
+            action.payload ||
+            "Failed to fetch messages";
+
+          console.error(
+            "❌ FETCH REJECTED:",
+            action.payload
+          );
+        }
+      );
   },
 });
 
-export const { setMessages, clearMessages, addMessageLocally, updateMessage, deleteMessage } = messageSlice.actions;
-export const selectAllMessages = (state) => state.messages?.messages || [];
-export const selectMessagesLoading = (state) => state.messages?.loading || false;
-export const selectMessageSending = (state) => state.messages?.sending || false;
-export const selectMessagesError = (state) => state.messages?.error || null;
+// ======================================================
+// ACTIONS
+// ======================================================
+
+export const {
+  setMessages,
+  clearMessages,
+  addMessageLocally,
+  updateMessage,
+  deleteMessage,
+} =
+  messageSlice.actions;
+
+// ======================================================
+// SELECTORS
+// ======================================================
+
+export const selectAllMessages = (
+  state
+) =>
+  state.messages?.messages || [];
+
+export const selectMessagesLoading = (
+  state
+) =>
+  state.messages?.loading || false;
+
+export const selectMessageSending = (
+  state
+) =>
+  state.messages?.sending || false;
+
+export const selectMessagesError = (
+  state
+) =>
+  state.messages?.error || null;
+
+export const selectCurrentMessagesConversationId =
+  (state) =>
+    state.messages
+      ?.currentConversationId ||
+    null;
+
+export const selectMessagesLoaded = (
+  state
+) =>
+  state.messages?.loaded || false;
+
+// ======================================================
+// REDUCER
+// ======================================================
 
 export default messageSlice.reducer;

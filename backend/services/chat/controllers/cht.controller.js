@@ -15,10 +15,9 @@ export const createConversation = async (req, res) => {
       });
     }
 
-    console.log("Creating conversation for userId:", userId);
-
     const conversation = await Conversation.create({
       user: userId,
+      title: req.body?.title || "New Conversation",
     });
 
     return res.status(201).json({
@@ -46,8 +45,6 @@ export const getConversations = async (req, res) => {
         message: "User ID is required",
       });
     }
-
-    console.log("Fetching conversations for userId:", userId);
 
     const conversations = await Conversation.find({
       user: userId,
@@ -134,7 +131,7 @@ export const deleteConversation = async (req, res) => {
 
     // Delete all messages belonging to this conversation
     await Message.deleteMany({
-      conversationId: id,
+      conversation: id,
     });
 
     return res.status(200).json({
@@ -159,6 +156,13 @@ export const saveMessage = async (req, res) => {
   try {
     const { conversationId, role, content } = req.body;
     const userId = req.headers["x-user-id"];
+
+    console.log("Saving message:", {
+      conversationId,
+      role,
+      content,
+      sender: userId,
+    });
 
     if (!conversationId || !role || !content) {
       return res.status(400).json({
@@ -187,11 +191,13 @@ export const saveMessage = async (req, res) => {
       });
     }
 
-    // Create message
+    // IMPORTANT:
+    // Message model expects "conversation", not "conversationId"
     const message = await Message.create({
-      content,
-      conversationId,
+      sender: userId,
+      conversation: conversationId,
       role,
+      content: content.trim(),
       createdAt: new Date(),
     });
 
@@ -200,9 +206,9 @@ export const saveMessage = async (req, res) => {
       updatedAt: new Date(),
     });
 
-    // Get all messages, latest first
+    // Get all messages
     const allMessages = await Message.find({
-      conversationId,
+      conversation: conversationId,
     }).sort({ createdAt: -1 });
 
     return res.status(201).json({
@@ -249,7 +255,7 @@ export const getMessagesByConversation = async (req, res) => {
     }
 
     const messages = await Message.find({
-      conversationId,
+      conversation: conversationId,
     }).sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -294,7 +300,7 @@ export const getLatestMessages = async (req, res) => {
     }
 
     const messages = await Message.find({
-      conversationId,
+      conversation: conversationId,
     })
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
@@ -337,7 +343,7 @@ export const deleteMessage = async (req, res) => {
     }
 
     const conversation = await Conversation.findOne({
-      _id: message.conversationId,
+      _id: message.conversation,
       user: userId,
     });
 
@@ -351,7 +357,7 @@ export const deleteMessage = async (req, res) => {
     await Message.findByIdAndDelete(id);
 
     const remainingMessages = await Message.find({
-      conversationId: message.conversationId,
+      conversation: message.conversation,
     }).sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -401,7 +407,7 @@ export const getConversationWithMessages = async (req, res) => {
     }
 
     const messages = await Message.find({
-      conversationId: id,
+      conversation: id,
     }).sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -456,7 +462,7 @@ export const searchMessages = async (req, res) => {
     }
 
     const messages = await Message.find({
-      conversationId,
+      conversation: conversationId,
       content: {
         $regex: query,
         $options: "i",
@@ -504,16 +510,16 @@ export const getMessageStats = async (req, res) => {
     }
 
     const totalMessages = await Message.countDocuments({
-      conversationId,
+      conversation: conversationId,
     });
 
     const userMessages = await Message.countDocuments({
-      conversationId,
+      conversation: conversationId,
       role: "user",
     });
 
     const assistantMessages = await Message.countDocuments({
-      conversationId,
+      conversation: conversationId,
       role: "assistant",
     });
 
